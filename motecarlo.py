@@ -11,11 +11,11 @@ gamma = 1
 
 N = 10000
 
-num_iterations = 100000
+num_iterations = 5000
 
 delta = T/N
 
-N_array = np.array([50 * 2 ** i for i in range(1, 8)])
+N_array = np.array([50 * 2 ** i for i in range(1, 10)])
 
 delta_array = T/N_array
 
@@ -94,7 +94,15 @@ def bsexact(sigma, R, K, T, s):
 
     F = 0.5 * s * (1 + sp.erf(d1 / np.sqrt(2))) - np.exp(-R * T) * K * 0.5 * (1 + sp.erf(d2 / np.sqrt(2)))
 
-    return F
+    return F    
+
+def main2(R, sigma, gamma, delta, S0, N, K, num_iterations):
+
+    E = sim(R, sigma, gamma, delta, S0, N, K, num_iterations)
+
+    V_hat = np.exp(-R * T) * E
+
+    return V_hat
 
 if __name__ == "__main__":
     
