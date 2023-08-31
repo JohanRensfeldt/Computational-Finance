@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.special as sp
+import time
 
 S0 = 14 
 K = 15
@@ -9,19 +10,17 @@ sigma = 0.25
 T = 0.5
 gamma = 1
 
-task = 3
+task = 1
 
-gamma_array = np.array([i * 0.1 for i in range(1, 10)])
+gamma_array = np.linspace(0.5, 1, 10)
 
 N = 10000
 
-num_iterations = 5000
+num_iterations = 10 ** 6 
 
-num_iterations_array = np.array([1000 * 2 ** i for i in range(1, 10)])
+num_iterations_array = np.array([ 10 ** i for i in range(1, 10)])
 
-
-
-N_array = np.array([50 * 2 ** i for i in range(1, 10)])
+N_array = np.array([5 * 2 ** i for i in range(1, 8)])
 
 delta = T/N
 delta_array = T/N_array
@@ -35,7 +34,18 @@ def euler(R, sigma, gamma, delta, S0, N, brownian):
     s[0] = S0
 
     for i in range(N):
-        s[i + 1] = s[i] + R * delta + sigma * s[i]**gamma * brownian[i]
+        s[i + 1] = s[i] + R * s[i] * delta + sigma * s[i]**gamma * brownian[i]
+
+    return s[-1]
+
+def milstein(R, sigma, gamma, delta, S0, N, brownian):
+
+    s = np.zeros(N + 1)
+    s[0] = S0
+    
+    for i in range(N):
+        s[i + 1] = s[i] + R * s[i] * delta + sigma * s[i]**gamma * brownian[i] + 0.5 * sigma**2 * gamma * s[i]**(2 * gamma - 1) * (brownian[i]**2 - delta)
+      
     return s[-1]
 
 def payoff(s, K):
@@ -55,15 +65,6 @@ def sim(R, sigma, gamma, delta, S0, N, K, num_iterations):
     
     return np.mean(V)
 
-def milstein(R, sigma, gamma, delta, S0, N, brownian):
-
-    s = np.zeros(N + 1)
-    s[0] = S0
-    
-    for i in range(N):
-        s[i + 1] = s[i] + R * s[i] * delta + sigma * s[i]**gamma * brownian[i] + 0.5 * sigma**2 * gamma * s[i]**(2 * gamma - 1) * (brownian[i]**2 - delta)
-      
-    return s[-1]
 
 
 def sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations):
@@ -91,7 +92,7 @@ def main(R, sigma, gamma, delta, S0, N, K, num_iterations):
 
 def bsexact(sigma, R, K, T, s):
 
-    d1 = np.log(s/K) + (R + 0.5 * sigma**2) * T / (sigma * np.sqrt(T))
+    d1 = (np.log(s/K) + (R + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
 
     d2 = d1 - sigma * np.sqrt(T)
 
@@ -123,41 +124,39 @@ if __name__ == "__main__":
 
     V_gamma = np.zeros(len(gamma_array))
 
+    start_time = time.time()    
+
     if task == 1:
 
-        for i in range(len(N_array)):
-
-            V_hat = main(R, sigma, gamma, delta_array[i], S0, N_array[i], K, num_iterations)
-            error[i] = abs(V_hat - b)
-            print(f"For N = {N_array[i]}, Error = {error[i]}")
-
-    elif task == 2:
-
-        for i in range(len(gamma_array)):
-
-            V_hat = main(R, sigma, gamma_array[i], delta, S0, N, K, num_iterations)
-            V_gamma[i] = V_hat
-            print(f"For gamma = {gamma_array[i]}, V_hat = {V_hat}")
-        
-        plot_task(gamma_array, V_gamma, "Gamma", "V_hat" "V_hat for different values of gamma")
-
-    elif task == 3:
-            
         for i in range(len(N_array)):
 
             V_hat = main2(R, sigma, gamma, delta_array[i], S0, N_array[i], K, num_iterations)
             error[i] = abs(V_hat - b)
             print(f"For N = {N_array[i]}, Error = {error[i]}")
-        
+            end_time = time.time()
+            print(f"Time taken = {end_time - start_time}")
         plot_task(N_array, error, "N", "Error", "Error for different values of N")
 
-    elif task == 4:
+    elif task == 2:
+
+        for i in range(len(gamma_array)):
+
+            V_hat = main2(R, sigma, gamma_array[i], delta, S0, N, K, num_iterations)
+            V_gamma[i] = V_hat
+            end_time = time.time()
+            print(f"Time taken = {end_time - start_time}")
+            print(f"For gamma = {gamma_array[i]}, V_hat = {V_hat}")
+        
+        plot_task(gamma_array, V_gamma, "Gamma", "V_hat" "V_hat for different values of gamma")
+
+    elif task == 3:
 
         for i in range(len(delta_array)):
             V_hat = main2(R, sigma, gamma, delta_array[i], S0, N, K, num_iterations)
             error[i] = abs(V_hat - b)
+            end_time = time.time()
+            print(f"Time taken = {end_time - start_time}")
             print(f"For delta = {delta_array[i]}, Error = {error[i]}")
-    
         plot_task(delta_array, error, "Delta", "Error", "Error for different values of delta")
 
     print(f"V_hat = {V_hat}")
