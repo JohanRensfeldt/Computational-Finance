@@ -10,17 +10,17 @@ sigma = 0.25
 T = 0.5
 gamma = 1
 
-task = 1
+task = 5
 
 gamma_array = np.linspace(0.5, 1, 10)
 
-N = 10000
+N = 50
 
-num_iterations = 10 ** 6 
+num_iterations = 10 ** 6
 
-num_iterations_array = np.array([ 10 ** i for i in range(1, 10)])
+num_iterations_array = np.array([ 10 ** i for i in range(2, 7)])
 
-N_array = np.array([5 * 2 ** i for i in range(1, 8)])
+N_array = np.array([1 * 2 ** i for i in range(1, 5)])
 
 delta = T/N
 delta_array = T/N_array
@@ -29,12 +29,12 @@ error = np.zeros(len(N_array))
 
 def euler(R, sigma, gamma, delta, S0, N, brownian):
 
-    s =  np.zeros(N + 1)
+    s = np.zeros(N + 1)
 
     s[0] = S0
 
     for i in range(N):
-        s[i + 1] = s[i] + R * s[i] * delta + sigma * s[i]**gamma * brownian[i]
+        s[i+1] = s[i] + R * s[i] * delta + sigma * s[i]**gamma * brownian[i]
 
     return s[-1]
 
@@ -51,30 +51,35 @@ def milstein(R, sigma, gamma, delta, S0, N, brownian):
 def payoff(s, K):
     return max(0, s - K )
 
-def sim(R, sigma, gamma, delta, S0, N, K, num_iterations):
+def sim(R, sigma, gamma, delta, S0, N, K, num_iterations, method='euler'):
     
     V = np.zeros(num_iterations)
 
     for i in range(num_iterations):
 
         brownian = np.random.normal(0, np.sqrt(delta), N)
-
-        st = milstein(R, sigma, gamma, delta, S0, N, brownian)
-
+        if method == 'euler':
+            st = euler(R, sigma, gamma, delta, S0, N, brownian)
+        elif method == 'milstein':
+            st = milstien(R, sigma, gamma, delta, S0, N, brownian)
         V[i]= payoff(st, K)
     
     return np.mean(V)
 
 
 
-def sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations):
+def sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations, method='euler'):
     
     V = np.zeros(num_iterations)
     
     for i in range(num_iterations // 2): 
         brownian = np.random.normal(0, np.sqrt(delta), (2, N))
-        st1 = milstein(R, sigma, gamma, delta, S0, N, brownian[0])
-        st2 = milstein(R, sigma, gamma, delta, S0, N, -brownian[1])
+        if method == 'euler':
+            st1 = euler(R, sigma, gamma, delta, S0, N, brownian[0])
+            st2 = euler(R, sigma, gamma, delta, S0, N, -brownian[1])
+        elif method == 'milstein':
+            st1 = milstein(R, sigma, gamma, delta, S0, N, brownian[0])
+            st2 = milstein(R, sigma, gamma, delta, S0, N, -brownian[1])
         
         V[2 * i] = payoff(st1, K)
         V[2 * i + 1] = payoff(st2, K)
@@ -82,9 +87,12 @@ def sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations):
     return np.mean(V)
 
 
-def main(R, sigma, gamma, delta, S0, N, K, num_iterations):
+def main(R, sigma, gamma, delta, S0, N, K, num_iterations, antithetic=False, method='euler'):
 
-    E = sim(R, sigma, gamma, delta, S0, N, K, num_iterations)
+    if antithetic:
+        E = sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations)
+    else:
+        E = sim(R, sigma, gamma, delta, S0, N, K, num_iterations)
 
     V_hat = np.exp(-R * T) * E
 
@@ -98,19 +106,14 @@ def bsexact(sigma, R, K, T, s):
 
     F = 0.5 * s * (1 + sp.erf(d1 / np.sqrt(2))) - np.exp(-R * T) * K * 0.5 * (1 + sp.erf(d2 / np.sqrt(2)))
 
-    return F    
+    return F
 
-def main2(R, sigma, gamma, delta, S0, N, K, num_iterations):
+def plot_task(x, y, x_label, y_label, title, loglog=False):
 
-    E = sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations)
-
-    V_hat = np.exp(-R * T) * E
-
-    return V_hat
-
-def plot_task(x, y, x_label, y_label, title):
-
-    plt.plot(x, y)
+    if loglog:
+        plt.loglog(x, y)
+    else:
+        plt.plot(x, y)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.title(title)
@@ -120,45 +123,69 @@ def plot_task(x, y, x_label, y_label, title):
 if __name__ == "__main__":
     
     b = bsexact(sigma, R, K, T, S0)
-    error = np.zeros(len(N_array))
 
     V_gamma = np.zeros(len(gamma_array))
 
-    start_time = time.time()    
-
     if task == 1:
-
-        for i in range(len(N_array)):
-
-            V_hat = main2(R, sigma, gamma, delta_array[i], S0, N_array[i], K, num_iterations)
+        #Plot sample error as function of the numbers of sample paths
+        error = np.zeros(len(num_iterations_array))
+        for i in range(len(num_iterations_array)):
+            start_time = time.time()
+            V_hat = main(R, sigma, gamma, delta, S0, N, K, num_iterations_array[i])
             error[i] = abs(V_hat - b)
-            print(f"For N = {N_array[i]}, Error = {error[i]}")
+            print(f"For N = {N}, num_iterations = {num_iterations_array[i]}, Error = {error[i]}")
             end_time = time.time()
             print(f"Time taken = {end_time - start_time}")
-        plot_task(N_array, error, "N", "Error", "Error for different values of N")
+        plot_task(num_iterations_array, error, "num iterations", "Error", "Error for different number of sample paths")
 
     elif task == 2:
-
-        for i in range(len(gamma_array)):
-
-            V_hat = main2(R, sigma, gamma_array[i], delta, S0, N, K, num_iterations)
-            V_gamma[i] = V_hat
+        #Plot discretization error as a function of the time step.
+        error = np.zeros(len(N_array))
+        for i in range(len(N_array)):
+            start_time = time.time()
+            V_hat = main(R, sigma, gamma, delta_array[i], S0, N_array[i], K, num_iterations)
+            error[i] = abs(V_hat - b)
+            print(f"For N = {N_array[i]}, num_iterations = {num_iterations}, Error = {error[i]}")
             end_time = time.time()
             print(f"Time taken = {end_time - start_time}")
-            print(f"For gamma = {gamma_array[i]}, V_hat = {V_hat}")
-        
-        plot_task(gamma_array, V_gamma, "Gamma", "V_hat" "V_hat for different values of gamma")
+        plot_task(delta_array, error, "N", "Error", "Error for different values of delta-t")
 
     elif task == 3:
-
-        for i in range(len(delta_array)):
-            V_hat = main2(R, sigma, gamma, delta_array[i], S0, N, K, num_iterations)
+        #A plot showing what happens when using euler + antithetic variates against sample paths
+        error = np.zeros(len(num_iterations_array))
+        for i in range(len(num_iterations_array)):
+            start_time = time.time()
+            V_hat = main(R, sigma, gamma, delta, S0, N, K, num_iterations_array[i], antithetic=True)
             error[i] = abs(V_hat - b)
             end_time = time.time()
             print(f"Time taken = {end_time - start_time}")
-            print(f"For delta = {delta_array[i]}, Error = {error[i]}")
-        plot_task(delta_array, error, "Delta", "Error", "Error for different values of delta")
+            print(f"For N = {N}, num_iterations = {num_iterations_array[i]}, Error = {error[i]}")
+        plot_task(delta_array, error, "Delta", "Error", "Error for different number of sample paths with euler and antithetic")
 
+    elif task == 4:
+        #A plot showing what happens when using milstein + antithetic variates against sample paths
+        error = np.zeros(len(num_iterations_array))
+        for i in range(len(num_iterations_array)):
+            start_time = time.time()
+            V_hat = main(R, sigma, gamma, delta, S0, N, K, num_iterations_array[i], antithetic=True, method='milstein')
+            error[i] = abs(V_hat - b)
+            end_time = time.time()
+            print(f"Time taken = {end_time - start_time}")
+            print(f"For N = {N}, num_iterations = {num_iterations_array[i]}, Error = {error[i]}")
+        plot_task(delta_array, error, "Delta", "Error", "Error for different number of sample paths with milstein and antithetic")
+
+    elif task == 5:
+        #A plot showing what happens when we let gamma go from 0.5 to 1
+        Vs = np.zeros(len(gamma_array))
+        for i in range(len(gamma_array)):
+            start_time = time.time()
+            V_hat = main(R, sigma, gamma_array[i], delta, S0, N, K, num_iterations, antithetic=True, method='milstein')
+            Vs[i] = V_hat
+            end_time = time.time()
+            print(f"Time taken = {end_time - start_time}")
+            print(f"For gamma = {gamma_array[i]}, N = {N}, num_iterations = {num_iterations}")
+        plot_task(gamma_array, Vs, "Delta", "Error", "Error for different values of gamma")
+    
     print(f"V_hat = {V_hat}")
     print(f"Exact BS Price = {b}")
 
