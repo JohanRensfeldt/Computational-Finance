@@ -9,6 +9,10 @@ sigma = 0.25
 T = 0.5
 gamma = 1
 
+task = 3
+
+gamma_array = np.array([i * 0.1 for i in range(1, 10)])
+
 N = 10000
 
 num_iterations = 5000
@@ -104,24 +108,60 @@ def main2(R, sigma, gamma, delta, S0, N, K, num_iterations):
 
     return V_hat
 
+def plot_task(x, y, x_label, y_label, title):
+
+    plt.plot(x, y)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.show()
+
+
 if __name__ == "__main__":
     
     b = bsexact(sigma, R, K, T, S0)
     error = np.zeros(len(N_array))
 
-    for i in range(len(N_array)):
+    V_gamma = np.zeros(len(gamma_array))
 
-        V_hat = main(R, sigma, gamma, delta_array[i], S0, N_array[i], K, num_iterations)
-        error[i] = abs(V_hat - b)
-        print(f"For N = {N_array[i]}, Error = {error[i]}")
+    if task == 1:
+
+        for i in range(len(N_array)):
+
+            V_hat = main(R, sigma, gamma, delta_array[i], S0, N_array[i], K, num_iterations)
+            error[i] = abs(V_hat - b)
+            print(f"For N = {N_array[i]}, Error = {error[i]}")
+
+    elif task == 2:
+
+        for i in range(len(gamma_array)):
+
+            V_hat = main(R, sigma, gamma_array[i], delta, S0, N, K, num_iterations)
+            V_gamma[i] = V_hat
+            print(f"For gamma = {gamma_array[i]}, V_hat = {V_hat}")
+        
+        plot_task(gamma_array, V_gamma, "Gamma", "V_hat" "V_hat for different values of gamma")
+
+    elif task == 3:
+            
+        for i in range(len(N_array)):
+
+            V_hat = main2(R, sigma, gamma, delta, S0, N_array[i], K, num_iterations)
+            error[i] = abs(V_hat - b)
+            print(f"For N = {N_array[i]}, Error = {error[i]}")
+        
+        plot_task(N_array, error, "N", "Error", "Error for different values of N")
+
+    elif task == 4:
+
+        for i in range(len(delta_array)):
+            V_hat = main2(R, sigma, gamma, delta_array[i], S0, N, K, num_iterations)
+            error[i] = abs(V_hat - b)
+            print(f"For delta = {delta_array[i]}, Error = {error[i]}")
+    
+        plot_task(delta_array, error, "Delta", "Error", "Error for different values of delta")
+
 
     print(f"V_hat = {V_hat}")
     print(f"Exact BS Price = {b}")
-
-    plt.plot(N_array, error)
-    plt.xlabel("N")
-    plt.ylabel("Error")
-    plt.title("Error for different values of N")
-    plt.show()
-
 
