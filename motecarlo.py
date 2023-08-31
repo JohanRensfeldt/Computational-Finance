@@ -17,19 +17,18 @@ N = 10000
 
 num_iterations = 5000
 
-delta = T/N
+num_iterations_array = np.array([1000 * 2 ** i for i in range(1, 10)])
+
+
 
 N_array = np.array([50 * 2 ** i for i in range(1, 10)])
 
+delta = T/N
 delta_array = T/N_array
 
 error = np.zeros(len(N_array))
 
 def euler(R, sigma, gamma, delta, S0, N, brownian):
-
-    #deviation = np.sqrt(delta)
-
-    #brownian = np.random.normal(0,deviation,N)
 
     s =  np.zeros(N + 1)
 
@@ -62,8 +61,8 @@ def milstein(R, sigma, gamma, delta, S0, N, brownian):
     s[0] = S0
     
     for i in range(N):
-        s[i + 1] = s[i] + R * s[i] * delta + sigma * s[i]**gamma * brownian[i] + 0.5 * sigma**2 * s[i]**(2*gamma) * (brownian[i]**2 - delta)
-        
+        s[i + 1] = s[i] + R * s[i] * delta + sigma * s[i]**gamma * brownian[i] + 0.5 * sigma**2 * gamma * s[i]**(2 * gamma - 1) * (brownian[i]**2 - delta)
+      
     return s[-1]
 
 
@@ -84,7 +83,7 @@ def sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations):
 
 def main(R, sigma, gamma, delta, S0, N, K, num_iterations):
 
-    E = sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations)
+    E = sim(R, sigma, gamma, delta, S0, N, K, num_iterations)
 
     V_hat = np.exp(-R * T) * E
 
@@ -102,7 +101,7 @@ def bsexact(sigma, R, K, T, s):
 
 def main2(R, sigma, gamma, delta, S0, N, K, num_iterations):
 
-    E = sim(R, sigma, gamma, delta, S0, N, K, num_iterations)
+    E = sim_with_antithetic(R, sigma, gamma, delta, S0, N, K, num_iterations)
 
     V_hat = np.exp(-R * T) * E
 
@@ -146,7 +145,7 @@ if __name__ == "__main__":
             
         for i in range(len(N_array)):
 
-            V_hat = main2(R, sigma, gamma, delta, S0, N_array[i], K, num_iterations)
+            V_hat = main2(R, sigma, gamma, delta_array[i], S0, N_array[i], K, num_iterations)
             error[i] = abs(V_hat - b)
             print(f"For N = {N_array[i]}, Error = {error[i]}")
         
@@ -160,7 +159,6 @@ if __name__ == "__main__":
             print(f"For delta = {delta_array[i]}, Error = {error[i]}")
     
         plot_task(delta_array, error, "Delta", "Error", "Error for different values of delta")
-
 
     print(f"V_hat = {V_hat}")
     print(f"Exact BS Price = {b}")
