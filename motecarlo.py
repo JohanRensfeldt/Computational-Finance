@@ -181,20 +181,54 @@ if __name__ == "__main__":
 
     elif task == 4:
 
-        error = np.zeros(len(num_iterations_array))
+        num_runs = 20
 
-        for i in range(len(num_iterations_array)):
-            V_hat = main2(R, sigma, gamma, delta, S0, N, K, num_iterations_array[i])
-            error[i] = abs(V_hat - b)
-            end_time = time.time()
-            print(f"Time taken = {end_time - start_time}")
-            print(f"For num_iterations = {num_iterations_array[i]}, Error = {error[i]}")
-        plt.loglog(num_iterations_array, error)
+        # Initialize array to hold error values for all runs
+        all_errors = np.zeros((num_runs, len(num_iterations_array)))
+
+        fit_runs = np.zeros(num_runs)
+
+        # Main loop over the number of runs
+        for n in range(num_runs):
+            error = np.zeros(len(num_iterations_array))
+            
+            # Loop over different numbers of iterations
+            for i, num_iter in enumerate(num_iterations_array):
+                V_hat = main2(R, sigma, gamma, delta, S0, N, K, num_iter)
+                error[i] = abs(V_hat - b)
+                end_time = time.time()
+                print(f"Time taken = {end_time - start_time}")
+                print(f"For num_iterations = {num_iter}, Error = {error[i]}")
+
+            #plt.loglog(num_iterations_array, error)
+            #plt.xlabel('Number of iterations')
+            #plt.ylabel('Error')
+            #plt.title('Error for different numbers of iterations')
+            #plt.show()
+
+            # Store the error values for this run
+            all_errors[n, :] = error
+
+            # Calculate the fit for this run and store it
+            fit = np.polyfit(np.log(num_iterations_array), np.log(error), 1)
+            fit_runs[n] = fit[0]
+            print(f"K value = {fit[0]}")
+
+        # Calculate the average error across all runs
+        average_error_array = np.mean(all_errors, axis=0)
+        print(f"Average error = {average_error_array}")
+
+        # Calculate the average fit across all runs
+        average_fit = np.mean(fit_runs)
+        print(f"Average K value = {average_fit}")
+
+        print(f"Exact BS Price = {b}")
+
+        plt.figure()
+
+        plt.loglog(num_iterations_array, average_error_array, marker='o')
+        plt.xlabel('Number of Iterations')
+        plt.ylabel('Average Error')
+        plt.title('Average Error vs Number of Iterations')
+        plt.grid(True)
         plt.show()
-
-        fit = np.polyfit(np.log(num_iterations_array), np.log(error), 1)
-        print(f"K value = {fit[1]}")
-        
-    print(f"V_hat = {V_hat}")
-    print(f"Exact BS Price = {b}")
-
