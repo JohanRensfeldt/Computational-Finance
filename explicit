@@ -1,0 +1,64 @@
+import numpy as np
+import scipy.special as sp
+
+
+K = 15.0
+s0 = 14.0
+S_max = 60.0
+T = 0.5
+r = 0.1
+sigma = 0.25
+M = 100
+N = 100
+
+N_array = np.arange(1, 1000, 10)
+error_array = np.zeros(len(N_array))
+M_array = np.zeros(len(N_array))
+
+option_price_array = np.zeros(len(N_array))
+
+dS_array = S_max / float(M_array)
+dt_array = T / float(N_array)
+
+dS = S_max / float(M)
+dt = T / float(N)
+
+def bsexact(sigma, R, K, T, s):
+    d1 = (np.log(s/K) + (R + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    F = 0.5 * s * (1 + sp.erf(d1 / np.sqrt(2))) - np.exp(-R * T) * K * 0.5 * (1 + sp.erf(d2 / np.sqrt(2)))
+    return F
+
+def explicit(M, N, dS, dt, sigma, r, S_max, K):
+    grid = np.zeros((M + 1, N + 1))
+    grid[:, -1] = np.maximum(0, np.linspace(0, S_max, M + 1) - K)
+
+    for j in reversed(range(N)):
+        for i in range(1, M):
+            delta_S = dS
+            S = i * delta_S
+            alpha = 0.5 * dt * (sigma ** 2 * S ** 2 / delta_S ** 2 - r * S / delta_S)
+            beta = 1.0 - dt * (sigma ** 2 * S ** 2 / delta_S ** 2 + r)
+            gamma = 0.5 * dt * (sigma ** 2 * S ** 2 / delta_S ** 2 + r * S / delta_S)
+            
+            grid[i, j] = alpha * grid[i - 1, j + 1] + beta * grid[i, j + 1] + gamma * grid[i + 1, j + 1]
+
+    return grid[int(s0 / dS), 0]
+
+b_exact = bsexact(sigma, r, K, T, s0)
+
+for i in range(len(N_array)):
+
+    dS = S_max / float(M_array[i])
+    dt = T / float(N_array[i])
+
+    option_price_array[i] = explicit(M, N_array[i], dS, dt, sigma, r, S_max, K)
+    error_array[i] = np.abs(option_price_array[i] - b_exact)
+
+
+
+
+
+
+
+print("European Call Option Price: ", option_price)
